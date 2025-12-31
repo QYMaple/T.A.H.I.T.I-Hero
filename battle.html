@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>战斗中</title>
+
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="./styles.css" />
+
+    <script src="./storage.js"></script>
+    <script src="./skills.js"></script>
+    <script src="./enemyPool.js"></script>
+    <script src="./scenes.js"></script>
+
+    <style>
+      .battle-wrap { width: min(760px, 100%); margin: 0 auto; position: relative; }
+      .battle-title { text-align:center; font-size: 34px; font-weight: 900; margin: 6px 0 16px; }
+
+      .row-top{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: start;
+        margin-bottom: 14px;
+      }
+      @media (max-width: 720px){ .row-top{ grid-template-columns: 1fr; } }
+
+      .panel{
+        background: rgba(0,0,0,0.03);
+        border-radius: 14px;
+        padding: 12px;
+        border: 1px solid rgba(0,0,0,0.08);
+      }
+
+      .name-line{
+        display:flex;
+        justify-content: space-between;
+        align-items:flex-start;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .name{ font-weight: 900; font-size: 16px; line-height: 1.2; }
+      .sub{
+        font-size: 12px;
+        opacity: 0.65;
+        margin-top: 4px;
+        line-height: 1.2;
+        min-height: 14px; /* ✅ 关键：保证对齐 */
+      }
+      .sub.invisible{ opacity: 0; }
+
+      .bar{ height: 12px; border-radius: 999px; background: rgba(0,0,0,0.12); overflow: hidden; }
+      .bar > div{ height: 100%; width: 0%; border-radius: 999px; }
+      .hp{ background: rgba(220,38,38,0.75); }
+      .mp{ background: rgba(37,99,235,0.75); }
+
+      .bar-row{ display:grid; gap: 8px; }
+      .bar-meta{ display:flex; justify-content: space-between; font-size: 12px; opacity: 0.75; }
+      .bar-meta b{ font-weight: 900; opacity: 1; }
+
+      .passives{
+        margin-top: 10px;
+        display:flex; gap: 8px; flex-wrap: wrap;
+      }
+      .p-slot{
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        border: 1px solid rgba(0,0,0,0.10);
+        background: #fff;
+        display:grid; place-items:center;
+        font-size: 16px;
+        opacity: 0.9;
+      }
+
+      .tracks{ display:grid; gap: 12px; margin-bottom: 14px; }
+      .track{
+        background: rgba(0,0,0,0.03);
+        border-radius: 14px;
+        padding: 12px;
+        border: 1px solid rgba(0,0,0,0.08);
+      }
+      .track-label{
+        font-weight: 900;
+        font-size: 14px;
+        margin-bottom: 8px;
+        opacity: 0.9;
+      }
+
+      /* ✅ 30:1 */
+      .viewport{
+        position: relative;
+        width: 100%;
+        aspect-ratio: 15 / 1;  /* ✅ 让轨道更高，图标更大，拖动更舒服 */
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.10);
+        overflow: hidden;
+      }
+
+      /* ✅ 轴必须在最上层 */
+      .axis{
+        position:absolute;
+        top:0; bottom:0;
+        width: 4px;
+        left: 12%;
+        background: rgba(47,115,255,0.9);
+        box-shadow: 0 0 0 2px rgba(47,115,255,0.14);
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .layer{ position:absolute; inset:0; z-index: 1; }
+
+      /* ✅ 无缝卡组（无圆角+可拖动） */
+      .card-skill{
+        position:absolute;
+        top: 10%;
+        height: 80%;
+        border-radius: 0;
+        border: 1px solid rgba(0,0,0,0.10);
+        background: rgba(47,115,255,0.10);
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        padding: 0 10px;
+        user-select:none;
+        touch-action: none;
+      }
+      .card-skill.buff{ background: rgba(16,185,129,0.12); }
+      .card-skill.active{ background: rgba(47,115,255,0.12); }
+
+      .ic{
+        width: 28px; height: 28px;
+        border-radius: 10px;
+        display:grid; place-items:center;
+        background: rgba(0,0,0,0.06);
+        font-size: 16px;
+        flex: 0 0 auto;
+      }
+      .nm{
+        font-weight: 900;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+      }
+
+      .card-skill.trigger{
+        outline: 2px solid rgba(47,115,255,0.40);
+        animation: flash 220ms ease-out;
+      }
+      @keyframes flash{
+        from{ transform: scale(1.02); }
+        to{ transform: scale(1.00); }
+      }
+
+      .bottom{ display:grid; gap: 10px; }
+      .action-btn{
+        width:100%;
+        border:0;
+        border-radius: 12px;
+        background:#2f73ff;
+        color:#fff;
+        padding:14px 12px;
+        font-size:18px;
+        font-weight:900;
+        cursor:pointer;
+      }
+      .action-btn:active{ transform: translateY(1px); }
+      .action-btn:disabled{ opacity: .55; cursor: not-allowed; }
+
+      /* ✅ 失败冻结（灰度 + 平滑） */
+      .freeze{
+        filter: grayscale(1);
+        opacity: 0.55;
+        transition: filter 700ms ease, opacity 700ms ease;
+      }
+
+      .result-overlay{
+        position: fixed;
+        inset: 0;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        background: rgba(0,0,0,0.18);
+        z-index: 999;
+      }
+      .result-overlay.show{ display:flex; }
+
+      .result-card{
+        width: min(560px, calc(100% - 32px));
+        background:#fff;
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,0.10);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+        padding: 22px 18px;
+        text-align:center;
+      }
+      .result-title{ font-size: 34px; font-weight: 900; margin: 0 0 12px; }
+
+      .result-actions{
+        margin-top: 14px;
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .rbtn{
+        border: 0;
+        border-radius: 12px;
+        padding: 14px 12px;
+        font-weight: 900;
+        cursor:pointer;
+        font-size: 16px;
+      }
+      .rbtn.primary{ background:#2f73ff; color:#fff; }
+      .rbtn.secondary{ background: rgba(0,0,0,0.10); }
+      .rbtn:active{ transform: translateY(1px); }
+
+      /* ✅ 左侧箭头按钮 + 侧滑面板（内嵌我的神力，不跳页） */
+      .side-toggle{
+        position: fixed;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 42px;
+        height: 56px;
+        border: 0;
+        border-radius: 14px;
+        background: rgba(0,0,0,0.10);
+        cursor: pointer;
+        font-weight: 900;
+        z-index: 950;
+      }
+      .side-toggle:active{ transform: translateY(-50%) translateY(1px); }
+      .side-toggle.hide{ display: none; }
+
+      .side-dim{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.18);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 220ms ease;
+        z-index: 960;
+      }
+      .side-dim.show{
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .sidepanel{
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: min(560px, 92vw);
+        background: #fff;
+        border-right: 1px solid rgba(0,0,0,0.10);
+        box-shadow: 20px 0 40px rgba(0,0,0,0.14);
+        transform: translateX(-105%);
+        transition: transform 260ms ease;
+        z-index: 970;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .sidepanel.open{ transform: translateX(0); }
+
+      .side-head{
+        padding: 12px 12px;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .side-title{ font-weight: 900; }
+      .side-close{
+        border:0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+        cursor: pointer;
+        background:#2f73ff;
+        color:#fff;
+      }
+      .side-close:active{ transform: translateY(1px); }
+
+      .side-frame{
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <button class="side-toggle" id="btnSide" type="button" aria-label="打开技能调整">❮</button>
+    <div class="side-dim" id="sideDim"></div>
+
+    <aside class="sidepanel" id="sidePanel" aria-hidden="true">
+      <div class="side-head">
+        <div class="side-title">技能调整</div>
+        <button class="side-close" id="btnSideClose" type="button">完成</button>
+      </div>
+      <iframe class="side-frame" id="sideFrame" src="./my-powers.html" title="我的神力"></iframe>
+    </aside>
+
+    <main class="page" id="pageRoot">
+      <section class="card">
+        <div class="battle-wrap">
+          <div class="battle-title" id="stageTitle">未知战场</div>
+
+          <div class="row-top">
+            <!-- 玩家 -->
+            <div class="panel">
+              <div class="name-line">
+                <div>
+                  <div class="name" id="playerName">冒险者</div>
+                  <div class="sub invisible">占位</div>
+                </div>
+              </div>
+
+              <div class="bar-row">
+                <div>
+                  <div class="bar-meta"><span>生命</span><b id="hpText">0/0</b></div>
+                  <div class="bar"><div class="hp" id="hpBar"></div></div>
+                </div>
+                <div>
+                  <div class="bar-meta"><span>法力</span><b id="mpText">0/0</b></div>
+                  <div class="bar"><div class="mp" id="mpBar"></div></div>
+                </div>
+              </div>
+
+              <div class="passives" id="passiveSlots"></div>
+            </div>
+
+            <!-- 敌人占位 -->
+            <div class="panel" id="enemyPanel">
+              <div class="name-line">
+                <div>
+                  <div class="name" id="enemyName">未知敌人</div>
+                  <div class="sub" id="enemySub">（等待角色库接入）</div>
+                </div>
+              </div>
+
+              <div class="bar-row">
+                <div>
+                  <div class="bar-meta"><span>生命</span><b id="ehpText">0/0</b></div>
+                  <div class="bar"><div class="hp" id="ehpBar"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ✅ 上下对调：主动在上，增益在下 -->
+          <div class="tracks">
+            <div class="track">
+              <div class="track-label">主动技能</div>
+              <div class="viewport" id="viewportActive">
+                <div class="axis"></div>
+                <div class="layer" id="layerActive"></div>
+              </div>
+            </div>
+
+            <div class="track">
+              <div class="track-label">增益技能</div>
+              <div class="viewport" id="viewportBuff">
+                <div class="axis"></div>
+                <div class="layer" id="layerBuff"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom">
+            <button class="action-btn" id="btnAction" type="button">开始战斗</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="result-overlay" id="resultOverlay" aria-hidden="true">
+      <div class="result-card">
+        <div class="result-title">战斗失败</div>
+
+        <div class="result-actions">
+          <button class="rbtn secondary" id="btnHome" type="button">返回主页</button>
+          <button class="rbtn primary" id="btnRetry" type="button">重新战斗</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./battle.js"></script>
+  </body>
+</html>

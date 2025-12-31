@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的信息</title>
+
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./storage.js"></script>
+
+    <style>
+      .info-wrap { width: min(600px, 100%); margin: 0 auto; }
+
+      .page-title { text-align: center; margin: 6px 0 10px; }
+      .title-row { display: inline-flex; align-items: center; gap: 10px; }
+      .title-text {
+        font-size: 40px; font-weight: 900; text-decoration: underline; line-height: 1.2;
+      }
+      .edit-btn {
+        border: 0; background: rgba(0,0,0,0.10); border-radius: 10px;
+        width: 34px; height: 34px; cursor: pointer;
+        display: grid; place-items: center; font-size: 16px;
+      }
+      .edit-btn:active { transform: translateY(1px); }
+
+      .nickname-editor { display: none; margin: 10px 0 14px; }
+      .nickname-input {
+        width: 100%; padding: 12px 12px; font-size: 18px;
+        border-radius: 6px; border: 2px solid rgba(0,0,0,0.35); outline: none;
+      }
+      .nick-actions { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .mini-confirm {
+        border: 0; border-radius: 10px; padding: 12px 14px;
+        font-weight: 900; cursor: pointer; background: #2f73ff; color: #fff;
+      }
+      .mini-cancel {
+        border: 0; border-radius: 10px; padding: 12px 14px;
+        font-weight: 900; cursor: pointer; background: rgba(0,0,0,0.10);
+      }
+
+      .kv { font-size: 20px; font-weight: 700; line-height: 2.2; color: #111827; }
+      .gap-xl { height: 28px; }
+
+      .back-btn {
+        width: 100%; border: 0; border-radius: 12px; background: #2f73ff; color: #fff;
+        padding: 14px 12px; font-size: 18px; font-weight: 800; cursor: pointer;
+      }
+      .back-btn:active { transform: translateY(1px); }
+
+      .stat-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .stat-left { display: flex; gap: 10px; align-items: baseline; }
+      .stat-name { min-width: 56px; }
+      .stat-value { font-weight: 900; }
+
+      .plus-btn {
+        border: 0; border-radius: 10px; width: 36px; height: 36px;
+        cursor: pointer; font-weight: 900; background: rgba(47,115,255,0.14);
+      }
+      .plus-btn:hover { background: rgba(47,115,255,0.22); }
+      .plus-btn:active { transform: translateY(1px); }
+      .plus-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+
+      .help-input {
+        width: 100%; margin-top: 14px; padding: 14px 14px; font-size: 18px;
+        border-radius: 4px; border: 2px solid rgba(0,0,0,0.45); outline: none;
+      }
+
+      .help-results {
+        display: none; margin-top: 10px; border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.02);
+        overflow: hidden;
+      }
+      .help-item {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 10px; padding: 12px 12px; cursor: pointer; background: #fff;
+        border-top: 1px solid rgba(0,0,0,0.06);
+      }
+      .help-item:first-child { border-top: 0; }
+      .help-item:hover { background: rgba(47,115,255,0.06); }
+      .help-title { font-weight: 900; }
+      .help-sub { font-size: 12px; opacity: 0.7; margin-top: 4px; line-height: 1.35; }
+      .help-tag { font-size: 12px; opacity: 0.75; white-space: nowrap; }
+
+      @media (max-width: 520px) { .title-text { font-size: 32px; } }
+    </style>
+  </head>
+
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="sub-wrap">
+          <!-- 标题=昵称 -->
+          <div class="page-title">
+            <div class="title-row">
+              <span class="title-text" id="nicknameTitle">冒险者</span>
+              <button class="edit-btn" id="editBtn" type="button" title="修改昵称">✏️</button>
+            </div>
+          </div>
+
+          <!-- 点击✏️显示：输入 + 确认/取消 -->
+          <div class="nickname-editor" id="nicknameEditor">
+            <input class="nickname-input" id="nicknameInput" type="text"
+              placeholder="输入新昵称（留空则为：冒险者）" maxlength="16" />
+            <div class="nick-actions">
+              <button class="mini-confirm" id="confirmBtn" type="button">确认</button>
+              <button class="mini-cancel" id="cancelBtn" type="button">取消</button>
+            </div>
+          </div>
+
+          <div class="kv">等级: <span id="levelText">1</span> (<span id="expText">0</span>/<span id="expNextText">200</span>)</div>
+          <div class="kv">主线进度: <span id="progressText">普通1</span></div>
+
+          <div class="gap-xl"></div>
+
+          <div class="kv stat-row">
+            <div class="stat-left">
+              <button class="info-btn" type="button" data-tip-key="str">?</button>
+              <span class="stat-name">力量:</span><span class="stat-value" id="strText">10</span>
+            </div>
+            <button class="plus-btn" id="btnStr" type="button">＋</button>
+          </div>
+          <div class="kv stat-row">
+            <div class="stat-left">
+              <button class="info-btn" type="button" data-tip-key="agi">?</button>
+              <span class="stat-name">敏捷:</span><span class="stat-value" id="agiText">10</span>
+            </div>
+            <button class="plus-btn" id="btnAgi" type="button">＋</button>
+          </div>
+          <div class="kv stat-row">
+            <div class="stat-left">
+              <button class="info-btn" type="button" data-tip-key="sta">?</button>
+              <span class="stat-name">体力:</span><span class="stat-value" id="staText">10</span>
+            </div>
+            <button class="plus-btn" id="btnSta" type="button">＋</button>
+          </div>
+          <div class="kv stat-row">
+            <div class="stat-left">
+              <button class="info-btn" type="button" data-tip-key="spi">?</button>
+              <span class="stat-name">精神:</span><span class="stat-value" id="spiText">10</span>
+            </div>
+            <button class="plus-btn" id="btnSpi" type="button">＋</button>
+          </div>
+
+          <div class="kv">可分配自由点数: <span id="freeText">0</span></div>
+
+          <div class="gap-xl"></div>
+
+          <div class="kv">我的金钱: <span id="goldText">0</span></div>
+          <div class="kv">我的钻石: <span id="diaText">0</span></div>
+
+          <div class="gap-xl"></div>
+
+          <button class="back-btn" onclick="goHome()">返回</button>
+
+          <input class="help-input" id="helpInput" type="text"
+            placeholder="在这里可以寻求女神莉莉丝的帮助（输入关键词，回车搜索）" />
+          <div class="help-results" id="helpResults"></div>
+        </div>
+      </section>
+    </main>
+	
+	<div class="stat-tip" id="statTip"></div>
+
+    <script>
+      const storage = window.TAHITI.storage;
+
+      // 当前玩家（只在本页内持有；写回统一用 storage.savePlayer）
+      let player = storage.loadPlayer();
+
+      const el = {
+        nicknameTitle: document.getElementById("nicknameTitle"),
+        levelText: document.getElementById("levelText"),
+        expText: document.getElementById("expText"),
+        expNextText: document.getElementById("expNextText"),
+        progressText: document.getElementById("progressText"),
+
+        strText: document.getElementById("strText"),
+        agiText: document.getElementById("agiText"),
+        staText: document.getElementById("staText"),
+        spiText: document.getElementById("spiText"),
+        freeText: document.getElementById("freeText"),
+
+        goldText: document.getElementById("goldText"),
+        diaText: document.getElementById("diaText"),
+
+        btnStr: document.getElementById("btnStr"),
+        btnAgi: document.getElementById("btnAgi"),
+        btnSta: document.getElementById("btnSta"),
+        btnSpi: document.getElementById("btnSpi")
+      };
+
+      function render() {
+        el.nicknameTitle.textContent = player.name;
+
+        el.levelText.textContent = player.level;
+        el.expText.textContent = player.exp;
+        el.expNextText.textContent = player.expNext;
+        el.progressText.textContent = player.progress;
+
+        el.strText.textContent = player.str;
+        el.agiText.textContent = player.agi;
+        el.staText.textContent = player.sta;
+        el.spiText.textContent = player.spi;
+
+        el.freeText.textContent = player.free;
+        el.goldText.textContent = player.gold;
+        el.diaText.textContent = player.diamond;
+
+        const disabled = player.free <= 0;
+        el.btnStr.disabled = disabled;
+        el.btnAgi.disabled = disabled;
+        el.btnSta.disabled = disabled;
+        el.btnSpi.disabled = disabled;
+      }
+
+      function saveAndRender() {
+        storage.savePlayer(player);
+        render();
+      }
+
+      // 加点：消耗自由点
+      function spendPoint(statKey) {
+        if (player.free <= 0) return;
+        player[statKey] += 1;
+        player.free -= 1;
+        saveAndRender();
+      }
+
+      el.btnStr.addEventListener("click", () => spendPoint("str"));
+      el.btnAgi.addEventListener("click", () => spendPoint("agi"));
+      el.btnSta.addEventListener("click", () => spendPoint("sta"));
+      el.btnSpi.addEventListener("click", () => spendPoint("spi"));
+	  
+	  /***********************
+	   * ✅ 属性说明气泡：? 点击显示
+	   ************************/
+	  const STAT_TIPS = {
+	    str: '力量：每一点力量增加"100生命+15物理攻击"',
+	    agi: '敏捷：每一点敏捷增加"15速度+15物理攻击"',
+	    sta: '体力：每一点体力增加"200生命+5真实伤害"',
+	    spi: '精神：每一点精神增加"15法力值+15全元素伤害"'
+	  };
+	  
+	  const tipEl = document.getElementById("statTip");
+	  let tipOpenFor = null;
+	  
+	  function hideTip() {
+	    tipEl.style.display = "none";
+	    tipOpenFor = null;
+	  }
+	  
+	  function showTip(btn, text) {
+	    tipEl.textContent = text;
+	    tipEl.style.display = "block";
+	  
+	    // 先清位置，确保能正确测量宽高
+	    tipEl.style.left = "0px";
+	    tipEl.style.top = "0px";
+	  
+	    const rect = btn.getBoundingClientRect();
+	    const padding = 12;
+	    const gap = 10;
+	  
+	    const tipW = tipEl.offsetWidth;
+	    const tipH = tipEl.offsetHeight;
+	  
+	    let left = rect.left;
+	    let top = rect.bottom + gap;
+	  
+	    // clamp
+	    if (left + tipW > window.innerWidth - padding) left = window.innerWidth - padding - tipW;
+	    if (left < padding) left = padding;
+	  
+	    // 下方不够放就放上方
+	    if (top + tipH > window.innerHeight - padding) top = rect.top - gap - tipH;
+	    if (top < padding) top = padding;
+	  
+	    tipEl.style.left = `${Math.round(left)}px`;
+	    tipEl.style.top = `${Math.round(top)}px`;
+	  }
+	  
+	  // ✅ 关键：阻止冒泡，不让你现有的 document.click 立刻把它关掉
+	  document.querySelectorAll(".info-btn").forEach((btn) => {
+	    btn.addEventListener("click", (e) => {
+	      e.stopPropagation();
+	      const key = btn.dataset.tipKey;
+	      const text = STAT_TIPS[key] || "";
+	  
+	      if (tipOpenFor === btn) {
+	        hideTip();
+	        return;
+	      }
+	      tipOpenFor = btn;
+	      showTip(btn, text);
+	    });
+	  });
+	  
+	  // 点击气泡本身也不关闭（否则你点文字会立刻关）
+	  tipEl.addEventListener("click", (e) => e.stopPropagation());
+	  
+	  // 点击空白处关闭
+	  document.addEventListener("click", () => hideTip());
+	  
+	  // ESC 关闭
+	  document.addEventListener("keydown", (e) => {
+	    if (e.key === "Escape") hideTip();
+	  });
+	  
+	  // 滚动/缩放时关闭（避免位置漂移）
+	  window.addEventListener("scroll", hideTip, { passive: true });
+	  window.addEventListener("resize", hideTip);
+
+      /***********************
+       * 昵称编辑（标题旁✏️）
+       ************************/
+      const editBtn = document.getElementById("editBtn");
+      const editorEl = document.getElementById("nicknameEditor");
+      const inputEl = document.getElementById("nicknameInput");
+      const confirmBtn = document.getElementById("confirmBtn");
+      const cancelBtn = document.getElementById("cancelBtn");
+
+      function normalizeName(name) {
+        const v = (name || "").trim();
+        return v.length ? v : "冒险者";
+      }
+      function showEditor() {
+        editorEl.style.display = "block";
+        inputEl.value = player.name;
+        inputEl.focus();
+        inputEl.select();
+      }
+      function hideEditor() { editorEl.style.display = "none"; }
+      function toggleEditor() {
+        if (editorEl.style.display === "block") hideEditor();
+        else showEditor();
+      }
+      function applyName() {
+        player.name = normalizeName(inputEl.value);
+        saveAndRender();
+        hideEditor();
+      }
+
+      editBtn.addEventListener("click", toggleEditor);
+      confirmBtn.addEventListener("click", applyName);
+      cancelBtn.addEventListener("click", hideEditor);
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") applyName();
+        if (e.key === "Escape") hideEditor();
+      });
+
+      /***********************
+       * 女神帮助：全游戏关键词搜索（页索引表先放这里，后面也能抽出去）
+       ************************/
+      const PAGES = [
+        { file: "index.html", title: "主页", keywords: ["首页","主页","欢迎","入口","导航"], available: true },
+        { file: "my-info.html", title: "我的信息", keywords: ["信息","属性","加点","自由点","昵称","莉莉丝"], available: true },
+        { file: "my-powers.html", title: "我的神力", keywords: ["神力","技能","装备","主动","增益","被动","拖动","释放回合"], available: true },
+
+        { file: "my-partners.html", title: "我的伙伴", keywords: ["伙伴","随从","同伴"], available: false },
+        { file: "items.html", title: "道具信息", keywords: ["道具","物品","背包"], available: false },
+        { file: "main-map.html", title: "主线关卡", keywords: ["主线","关卡","地图"], available: false },
+        { file: "side-dungeons.html", title: "支线副本", keywords: ["支线","副本","地下城"], available: false },
+        { file: "daily-tasks.html", title: "每日必做", keywords: ["每日","任务","签到"], available: false },
+        { file: "weekly-activities.html", title: "每周活动", keywords: ["每周","活动"], available: false }
+      ];
+
+      const helpInput = document.getElementById("helpInput");
+      const helpResults = document.getElementById("helpResults");
+
+      function searchPages(q) {
+        const query = (q || "").trim();
+        if (!query) return [];
+        return PAGES
+          .map(p => {
+            const scoreTitle = p.title.includes(query) ? 2 : 0;
+            const scoreKw = p.keywords.some(k => k.includes(query)) ? 1 : 0;
+            return { p, score: scoreTitle + scoreKw };
+          })
+          .filter(x => x.score > 0)
+          .sort((a,b) => b.score - a.score)
+          .map(x => x.p);
+      }
+
+      function renderResults(list, query) {
+        if (!query || list.length === 0) {
+          helpResults.style.display = "none";
+          helpResults.innerHTML = "";
+          return;
+        }
+        helpResults.style.display = "block";
+        helpResults.innerHTML = "";
+
+        list.forEach(p => {
+          const div = document.createElement("div");
+          div.className = "help-item";
+          div.innerHTML = `
+            <div>
+              <div class="help-title">${p.title}</div>
+              <div class="help-sub">匹配：${query} · 关键词：${p.keywords.slice(0,4).join("、")}${p.keywords.length>4 ? "…" : ""}</div>
+            </div>
+            <div class="help-tag">${p.available ? "可前往" : "未开放"}</div>
+          `;
+          div.addEventListener("click", () => {
+            if (!p.available) {
+              alert("这个页面暂未开放。");
+              return;
+            }
+            window.location.href = "./" + p.file;
+          });
+          helpResults.appendChild(div);
+        });
+      }
+
+      function doSearch() {
+        const q = helpInput.value.trim();
+        renderResults(searchPages(q), q);
+      }
+
+      helpInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") doSearch();
+        if (e.key === "Escape") {
+          helpResults.style.display = "none";
+          helpResults.innerHTML = "";
+        }
+      });
+
+      let t = null;
+      helpInput.addEventListener("input", () => {
+        clearTimeout(t);
+        t = setTimeout(doSearch, 120);
+      });
+
+      document.addEventListener("click", (e) => {
+        const inside = helpResults.contains(e.target) || helpInput.contains(e.target);
+        if (!inside) {
+          helpResults.style.display = "none";
+          helpResults.innerHTML = "";
+        }
+      });
+
+      function goHome() {
+        window.location.href = "./index.html";
+      }
+
+      // 初次渲染
+      render();
+      hideEditor();
+	  
+	  // ✅ 允许在 Console 或其他脚本里手动让本页重新读取存档并刷新 UI
+	  window.TAHITI.pages = window.TAHITI.pages || {};
+	  window.TAHITI.pages.myInfo = {
+	    reload() {
+	      player = storage.loadPlayer();
+	      render();
+	    }
+	  };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的神力</title>
+
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="./styles.css" />
+
+    <!-- ✅ 加这一行：一定要在 skills.js 之前 -->
+    <script src="./storage.js"></script>
+    
+    <!-- 如果你没有 skillFormat.js，就删掉这一行 -->
+    <script src="./skillFormat.js"></script>
+    <script src="./skills.js"></script>
+  </head>
+
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="powers-wrap">
+          <div class="powers-title">我的神力</div>
+
+          <div class="two-col">
+            <!-- 左：技能库 -->
+            <div class="panel">
+              <h2>技能库</h2>
+
+              <div class="tabs" id="tabs">
+                <button class="tab active" data-filter="all">全部</button>
+                <button class="tab" data-filter="buff">增益</button>
+                <button class="tab" data-filter="active">主动</button>
+                <button class="tab" data-filter="passive">被动</button>
+              </div>
+
+              <!-- 提示：没加载到技能库时显示 -->
+              <div id="skillWarn" style="display:none; margin:10px 0; padding:10px; border-radius:12px; background: rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.25); font-weight:900;">
+                ⚠️ 技能库为空 / 未加载。请检查：是否正确引入 skills.js，且 skills.js 里有 window.SKILLS_DB。
+              </div>
+
+              <div class="skill-list" id="skillList"></div>
+            </div>
+
+            <!-- 右：已装备 -->
+            <div class="panel">
+              <h2>已装备（15）</h2>
+
+              <div class="loadout">
+                <div class="group" data-group="buff">
+                  <div class="group-title">
+                    <b>增益技能（5）</b>
+                    <span>可拖动排序 · 默认先于主动释放</span>
+                  </div>
+                  <div class="slots" id="slots_buff"></div>
+                </div>
+
+                <div class="group" data-group="active">
+                  <div class="group-title">
+                    <b>主动技能（5）</b>
+                    <span>可拖动排序 · 按“释放回合”触发</span>
+                  </div>
+                  <div class="slots" id="slots_active"></div>
+                </div>
+
+                <div class="group" data-group="passive">
+                  <div class="group-title">
+                    <b>被动技能（5）</b>
+                    <span>常驻/触发效果（战斗规则后续再做）</span>
+                  </div>
+                  <div class="slots" id="slots_passive"></div>
+                </div>
+
+                <div class="back-row">
+                  <button class="back-btn" onclick="goHome()">返回</button>
+                  <div class="hint">
+                    使用方法：<br/>
+                    1）点“装备”把技能放进右侧槽位（同类型才能放）<br/>
+                    2）右侧同类型槽位可以拖动排序（影响释放顺序）<br/>
+                    3）刷新页面不会丢失（已保存到本地）<br/>
+                    备注：默认“增益先于主动”，例外规则后续再加
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function loadOwnedSkillIds() {
+        // ✅ 优先走 storage.loadPlayer()：它会自动补齐 ownedSkills / 做迁移
+        try {
+          const st = window.TAHITI?.storage;
+          if (st && typeof st.loadPlayer === "function") {
+            const p = st.loadPlayer();
+            const arr = Array.isArray(p?.ownedSkills) ? p.ownedSkills : [];
+            return arr.map(x => String(x || "").trim()).filter(Boolean);
+          }
+        } catch {}
+      
+        // 兜底：没有 storage.js 或 loadPlayer 不存在时，才直接读 localStorage
+        try {
+          const raw = localStorage.getItem("tahiti_player_v1");
+          if (!raw) return [];
+          const p = JSON.parse(raw);
+          const arr = Array.isArray(p?.ownedSkills) ? p.ownedSkills : [];
+          return arr.map(x => String(x || "").trim()).filter(Boolean);
+        } catch {
+          return [];
+        }
+      }
+      
+      const ALL_SKILLS = Array.isArray(window.SKILLS_DB) ? window.SKILLS_DB : [];
+      
+      const ownedIds = new Set(loadOwnedSkillIds());
+      
+      // ✅ 没有拥有 -> 不显示
+      const SKILLS = ALL_SKILLS.filter(s => s && ownedIds.has(s.id));
+      
+      // ✅ 如果页面没有 skillWarn，也不会报错
+      const skillWarn = document.getElementById("skillWarn");
+      if (!SKILLS.length) {
+        if (skillWarn) {
+          skillWarn.style.display = "block";
+          skillWarn.innerHTML =
+            "⚠️ 你当前没有获得任何技能（player.ownedSkills 为空或未设置）。<br/>" +
+            "请检查：localStorage 里的 tahiti_player_v1 是否包含 ownedSkills。";
+        }
+        console.warn("[my-powers] ownedSkills 为空：技能库将不显示任何技能");
+      } else {
+        if (skillWarn) skillWarn.style.display = "none";
+      }
+      
+      /***********************
+       * 1) 本地存档（刷新不丢）
+       ************************/
+      const STORAGE_KEY = "tahiti_loadout_v1";
+      
+      function defaultLoadout() {
+        return {
+          buff:   [null, null, null, null, null],
+          active: [null, null, null, null, null],
+          passive:[null, null, null, null, null]
+        };
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return defaultLoadout();
+          const parsed = JSON.parse(raw);
+
+          const d = defaultLoadout();
+          for (const k of ["buff", "active", "passive"]) {
+            if (Array.isArray(parsed?.[k])) {
+              d[k] = parsed[k].slice(0, 5);
+              while (d[k].length < 5) d[k].push(null);
+            }
+          }
+          return d;
+        } catch {
+          return defaultLoadout();
+        }
+      }
+
+      function notifyBattleLoadoutChanged() {
+        try {
+          // 通知父页面（battle.html）“技能装备发生变化”
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: "TAHITI_LOADOUT_CHANGED" }, "*");
+          }
+        } catch {}
+      }
+      
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(LOADOUT));
+        notifyBattleLoadoutChanged(); // ✅关键：保存时通知战斗页面刷新
+      }
+
+      let LOADOUT = loadState();
+
+      /***********************
+       * 2) 渲染
+       ************************/
+      const skillListEl = document.getElementById("skillList");
+      const tabsEl = document.getElementById("tabs");
+
+      const slotsEls = {
+        buff: document.getElementById("slots_buff"),
+        active: document.getElementById("slots_active"),
+        passive: document.getElementById("slots_passive")
+      };
+
+      let currentFilter = "all";
+
+      function getSkillById(id) {
+        return SKILLS.find(s => s && s.id === id) || null;
+      }
+
+      function typeName(t) {
+        if (t === "active") return "主动";
+        if (t === "buff") return "增益";
+        if (t === "passive") return "被动";
+        return t;
+      }
+	  
+	  // ✅ 全局可用：转义（避免 HTML 注入 / 拼接报错）
+	  function esc(s){
+	    return String(s ?? "").replace(/[&<>"']/g, m => ({
+	      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+	    }[m]));
+	  }
+	  
+	  // ✅ 全局可用：把 skill.icon 渲染成 “图片 or emoji”
+	  function renderIconHtml(skill){
+	    const icon = skill?.icon;
+	    const isImg = typeof icon === "string" && /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(icon.trim());
+	  
+	    // 图片路径：用 img
+	    if (isImg) {
+	      return `<img src="${esc(icon)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;">`;
+	    }
+	  
+	    // emoji / 文字：直接显示
+	    return esc(icon || "✨");
+	  }
+
+      function renderSkills() {
+        const filtered = SKILLS.filter(s => {
+          if (!s) return false;
+          return currentFilter === "all" ? true : s.type === currentFilter;
+        });
+
+        skillListEl.innerHTML = "";
+
+        filtered.forEach(skill => {
+          const card = document.createElement("div");
+          card.className = "skill-card";
+          card.draggable = true;
+          card.dataset.skillId = skill.id;
+
+          card.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", JSON.stringify({ kind: "skill", skillId: skill.id }));
+          });
+
+          // ====== 新：更强的展示（技能种类 / 攻击频率 / 彩色元素文字） ======
+          function esc(s){
+            return String(s ?? "").replace(/[&<>"']/g, m => ({
+              "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+            }[m]));
+          }
+
+          // 元素颜色（按你的要求：物理棕、火亮红、冰浅蓝、电黄、毒紫、风绿、真伤白…）
+          function elementSpan(elementKey, text){
+            const cls = {
+              physical: "el-physical",
+              fire: "el-fire",
+              ice: "el-ice",
+              lightning: "el-lightning",
+              poison: "el-poison",
+              wind: "el-wind",
+              true: "el-true",
+              blood: "el-blood"
+            }[elementKey] || "el-default";
+            return `<span class="${cls}">${esc(text)}</span>`;
+          }
+
+          // 支持两种写法：
+          // A) skill.display.effectHtml 直接给字符串（你以后也可以用这个最省事）
+          // B) skill.display.effectParts 给数组（token），例如：
+          //    [{t:"text",v:"造成一次"},{t:"pct",v:100},{t:"text",v:"的"},{t:"dmg",el:"physical",label:"物理伤害"},{t:"text",v:"。"}]
+          function renderEffect(skill){
+            const d = skill.display || null;
+            if (!d) return esc(skill.desc || "");
+            if (typeof d.effectHtml === "string" && d.effectHtml.trim()) return d.effectHtml;
+
+            const parts = d.effectParts;
+            if (!Array.isArray(parts) || parts.length === 0) return esc(skill.desc || "");
+
+            let html = "";
+            for (const p of parts) {
+              if (!p) continue;
+              if (p.t === "text") html += esc(p.v);
+              else if (p.t === "pct") html += `<b>${esc(p.v)}%</b>`;
+              else if (p.t === "dmg") html += elementSpan(p.el, p.label);
+              else html += esc(p.v ?? "");
+            }
+            return html;
+          }
+
+          // 兼容：如果 icon 是路径就先不在列表里显示图片（避免你样式乱）
+          const iconHtml = renderIconHtml(skill);
+
+          const kindText = skill.display?.kindText || typeName(skill.type); // 例如“战技”
+          const freq = (skill.display?.freq ?? (skill.type !== "passive" ? skill.releaseTurn : 0));
+
+          // 给每个卡片追加一个“元素样式”CSS（只注入一次）
+          if (!document.getElementById("skillColorStyle")) {
+            const st = document.createElement("style");
+            st.id = "skillColorStyle";
+            st.textContent = `
+              .el-physical{ color:#8b5a2b; font-weight:900; }
+              .el-fire{ color:#ff2d2d; font-weight:900; }
+              .el-ice{ color:#7dd3fc; font-weight:900; }
+              .el-lightning{ color:#facc15; font-weight:900; }
+              .el-poison{ color:#a855f7; font-weight:900; }
+              .el-wind{ color:#22c55e; font-weight:900; }
+              .el-true{ color:#ffffff; background:rgba(0,0,0,0.55); padding:0 6px; border-radius:8px; font-weight:900; }
+              .el-blood{ color:#7f1d1d; font-weight:900; }
+              .el-default{ font-weight:900; }
+            `;
+            document.head.appendChild(st);
+          }
+
+          card.innerHTML = `
+            <div class="skill-top">
+              <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+                <div class="slot-icon">${iconHtml}</div>
+                <div style="min-width:0;">
+                  <div class="skill-name">${esc(skill.name)}</div>
+                  <div class="skill-meta">技能种类：${esc(kindText)} · 攻击频率：${esc(freq)}</div>
+                </div>
+              </div>
+              <button class="mini-btn" data-equip="${esc(skill.id)}">装备</button>
+            </div>
+            <div class="skill-desc">${renderEffect(skill)}</div>
+          `;
+
+          card.querySelector(`[data-equip="${skill.id}"]`).addEventListener("click", () => {
+            equipToFirstEmptySlot(skill.id);
+          });
+
+          skillListEl.appendChild(card);
+        });
+      }
+
+      function renderSlots() {
+        for (const group of ["buff", "active", "passive"]) {
+          const wrap = slotsEls[group];
+          wrap.innerHTML = "";
+
+          for (let i = 0; i < 5; i++) {
+            const skillId = LOADOUT[group][i];
+            const skill = skillId ? getSkillById(skillId) : null;
+
+            const slot = document.createElement("div");
+            slot.className = "slot" + (skill ? " filled" : "");
+            slot.dataset.group = group;
+            slot.dataset.index = String(i);
+
+            slot.draggable = !!skill;
+            if (skill) {
+              slot.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/plain", JSON.stringify({
+                  kind: "slot",
+                  fromGroup: group,
+                  fromIndex: i
+                }));
+                slot.classList.add("ghost");
+              });
+              slot.addEventListener("dragend", () => slot.classList.remove("ghost"));
+            }
+
+            slot.addEventListener("dragover", (e) => e.preventDefault());
+            slot.addEventListener("drop", (e) => {
+              e.preventDefault();
+              const payloadRaw = e.dataTransfer.getData("text/plain");
+              if (!payloadRaw) return;
+
+              let payload;
+              try { payload = JSON.parse(payloadRaw); } catch { return; }
+
+              if (payload.kind === "skill") {
+                equipToSpecificSlot(payload.skillId, group, i);
+              } else if (payload.kind === "slot") {
+                if (payload.fromGroup === group) {
+                  swapSlots(group, payload.fromIndex, i);
+                }
+              }
+            });
+
+            const iconHtml = skill ? renderIconHtml(skill) : "＋";
+
+            slot.innerHTML = `
+              <div class="slot-left">
+                <<div class="slot-icon">${iconHtml}</div>
+                <div class="slot-text">
+                  <div class="slot-name">${skill ? skill.name : `空槽位 ${i + 1}`}</div>
+                  <div class="slot-sub">${
+                    skill
+                      ? (group !== "passive" ? `释放回合：${skill.releaseTurn}` : "被动效果")
+                      : `拖入${typeName(group)}技能 / 点装备`
+                  }</div>
+                </div>
+              </div>
+              <div class="slot-actions">
+                ${skill ? `<button class="danger-btn" data-remove="${group}:${i}">移除</button>` : ``}
+              </div>
+            `;
+
+            if (skill) {
+              slot.querySelector(`[data-remove="${group}:${i}"]`).addEventListener("click", () => {
+                LOADOUT[group][i] = null;
+                saveState();
+                renderSlots();
+              });
+            }
+
+            wrap.appendChild(slot);
+          }
+        }
+      }
+
+      /***********************
+       * 3) 装备逻辑
+       ************************/
+      function findEquipped(skillId) {
+        for (const group of ["buff", "active", "passive"]) {
+          const idx = LOADOUT[group].indexOf(skillId);
+          if (idx !== -1) return { group, index: idx };
+        }
+        return null;
+      }
+
+      function equipToFirstEmptySlot(skillId) {
+        const skill = getSkillById(skillId);
+        if (!skill) return;
+
+        const group = skill.type;
+        const emptyIndex = LOADOUT[group].findIndex(x => x === null);
+
+        if (emptyIndex === -1) {
+          alert(`${typeName(group)}槽位已满（5/5）。先移除或拖动调整。`);
+          return;
+        }
+        equipToSpecificSlot(skillId, group, emptyIndex);
+      }
+
+      function equipToSpecificSlot(skillId, group, index) {
+        const skill = getSkillById(skillId);
+        if (!skill) return;
+
+        if (skill.type !== group) {
+          alert(`只能把【${typeName(skill.type)}技能】放进【${typeName(group)}槽位】。`);
+          return;
+        }
+
+        const already = findEquipped(skillId);
+        if (already) {
+          LOADOUT[already.group][already.index] = null;
+        }
+
+        LOADOUT[group][index] = skillId;
+
+        saveState();
+        renderSlots();
+      }
+
+      function swapSlots(group, a, b) {
+        if (a === b) return;
+        const tmp = LOADOUT[group][a];
+        LOADOUT[group][a] = LOADOUT[group][b];
+        LOADOUT[group][b] = tmp;
+        saveState();
+        renderSlots();
+      }
+
+      /***********************
+       * 4) Tab 切换
+       ************************/
+      tabsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".tab");
+        if (!btn) return;
+
+        currentFilter = btn.dataset.filter;
+
+        [...tabsEl.querySelectorAll(".tab")].forEach(x => x.classList.remove("active"));
+        btn.classList.add("active");
+
+        renderSkills();
+      });
+
+      function goHome() {
+        window.location.href = "./index.html";
+      }
+
+      // 初次渲染
+      renderSkills();
+      renderSlots();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>T.A.H.I.T.I Hero</title>
+
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <main class="page">
+      <section class="card">
+        <h1 class="title">欢迎来到塔希提勇者</h1>
+
+        <!-- ✅ 内容区：图片/文字/按钮统一同宽，且比卡片窄（第二张效果） -->
+        <div class="content">
+          <div class="banner" aria-label="Hero Banner">
+            <img src="./main.JPG" alt="Hero Banner" />
+          </div>
+
+          <p class="intro">
+            勇者大人，没有什么能够阻挡您的道路，如果有，请打败它！打败最终的魔王是您的目标，
+            近千年来，无数冒险者与前代勇者尝试击败魔王，但都以失败告终，而现在，您就是全新的可能吗？
+          </p>
+
+          <div class="grid" role="navigation" aria-label="功能入口">
+            <button class="btn" onclick="navigateTo('my-info.html')">我的信息</button>
+            <button class="btn" onclick="navigateTo('my-powers.html')">我的神力</button>
+
+            <button class="btn" onclick="navigateTo('my-partners.html')">我的伙伴</button>
+            <button class="btn" onclick="navigateTo('items.html')">道具信息</button>
+
+            <button class="btn" onclick="navigateTo('main-map.html')">主线关卡</button>
+            <button class="btn" onclick="navigateTo('side-dungeons.html')">支线副本</button>
+
+            <button class="btn" onclick="navigateTo('battle.html')">每日必做</button>
+            <button class="btn" onclick="navigateTo('weekly-activities.html')">每周活动</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function navigateTo(page) {
+        // 单文件夹结构：直接跳同级页面
+        window.location.href = "./" + page;
+      }
+    </script>
+  </body>
+</html>

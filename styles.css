@@ -1,0 +1,444 @@
+:root {
+  --bg: #f4f4f9;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #374151;
+
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.10);
+  --radius: 18px;
+
+  --btn: #2f73ff;
+  --btn-hover: #1f5ae0;
+  --btn-radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 18px 14px;
+}
+
+/* ✅ 第二张的“外壳”：卡片宽一些，并且有明显内边距 */
+.card {
+  width: min(760px, 96vw);       /* 卡片比内容宽 */
+  background: var(--card);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 28px 30px 26px;       /* 留白更大 => 更像第二张 */
+}
+
+/* 标题（第二张更干净紧凑一点） */
+.title {
+  margin: 6px 0 18px;
+  text-align: center;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+/* ✅ 第二张的“内容区”：图片/文字/按钮统一同宽，并且更窄居中 */
+.content {
+  width: min(600px, 100%);       /* 关键：内容更窄 */
+  margin: 0 auto;
+}
+
+/* 横幅 */
+.banner {
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 0 auto 14px;
+}
+
+.banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ✅ 文字：同宽 + 加粗 */
+.intro {
+  width: 100%;
+  margin: 10px 0 16px;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--muted);
+  font-weight: 800;              /* 加粗 */
+  text-align: left;
+}
+
+/* 按钮区：跟 content 同宽 */
+.grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+
+.btn {
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: var(--btn);
+  color: #fff;
+
+  padding: 14px 12px;
+  font-size: 17px;
+  font-weight: 800;
+
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease;
+}
+
+.btn:hover { background: var(--btn-hover); }
+.btn:active { transform: translateY(1px); }
+
+/* 手机端：自动变一列，并且整体再紧凑一点 */
+@media (max-width: 520px) {
+  .card { padding: 22px 18px 20px; }
+  .title { font-size: 32px; margin-bottom: 14px; }
+  .content { width: 100%; }
+  .grid { grid-template-columns: 1fr; gap: 10px; }
+  .btn { padding: 13px 12px; }
+}
+
+/* =========================
+   子页面：通用组件（返回按钮/输入框/标题/间距）
+   ========================= */
+.page-title {
+  text-align: center;
+  font-size: 40px;
+  font-weight: 900;
+  text-decoration: underline;
+  margin: 6px 0 20px;
+}
+
+.kv {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 2.2;
+  color: #111827;
+}
+
+.gap-lg { height: 18px; }
+.gap-xl { height: 28px; }
+
+/* 子页面的内容宽度（和你主页面 content 一致的“第二张效果”） */
+.sub-wrap {
+  width: min(600px, 100%);
+  margin: 0 auto;
+}
+
+.back-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: var(--btn);
+  color: #fff;
+  padding: 14px 12px;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.back-btn:hover { background: var(--btn-hover); }
+.back-btn:active { transform: translateY(1px); }
+
+.help-input {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 14px;
+  font-size: 18px;
+  border-radius: 4px;
+  border: 2px solid rgba(0,0,0,0.45);
+  outline: none;
+}
+
+
+/* =========================
+   我的神力（my-powers.html）
+   ========================= */
+.powers-title {
+  text-align: center;
+  font-size: 40px;
+  font-weight: 900;
+  margin: 6px 0 18px;
+}
+
+.powers-wrap {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.panel {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 14px;
+  padding: 12px;
+}
+.panel h2 {
+  margin: 4px 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tab {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 800;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.08);
+}
+.tab.active {
+  background: var(--btn);
+  color: #fff;
+}
+
+.skill-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.skill-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.skill-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-name {
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.skill-meta {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.skill-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.mini-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 900;
+  background: var(--btn);
+  color: #fff;
+  white-space: nowrap;
+}
+.mini-btn:hover { background: var(--btn-hover); }
+
+.loadout { display: grid; gap: 12px; }
+
+.group {
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.group-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 2px 0 10px;
+}
+.group-title b { font-size: 15px; }
+.group-title span { font-size: 12px; opacity: 0.7; }
+
+.slots {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.slot {
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.slot.filled {
+  background: rgba(47, 115, 255, 0.08);
+  border-style: solid;
+  border-color: rgba(47, 115, 255, 0.25);
+}
+
+.slot-left {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.slot-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.06);
+  flex: 0 0 auto;
+  font-size: 18px;
+}
+
+.slot-text { min-width: 0; }
+
+.slot-name {
+  font-weight: 900;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slot-sub {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.ghost { opacity: 0.6; }
+
+.danger-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.10);
+}
+
+.back-row {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.7;
+  line-height: 1.5;
+  background: rgba(0,0,0,0.03);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 720px) {
+  .two-col { grid-template-columns: 1fr; }
+  .skill-list { max-height: 320px; }
+}
+
+/* ✅ 属性左侧：带圈 ? */
+.info-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.22);
+  background: #fff;
+  color: #111827;
+  font-weight: 900;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transform: translateY(2px);
+}
+.info-btn:hover { border-color: rgba(47,115,255,0.55); }
+.info-btn:active { transform: translateY(3px); }
+
+/* ✅ 说明气泡（不是弹窗） */
+.stat-tip {
+  position: fixed;
+  z-index: 9999;
+  display: none;
+  max-width: 340px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(17,24,39,0.92);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  white-space: pre-line;
+}
+.stat-tip::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 14px;
+  width: 14px;
+  height: 14px;
+  background: rgba(17,24,39,0.92);
+  transform: rotate(45deg);
+  border-radius: 3px;
+}
+
+/* ===== 技能关键词颜色 ===== */
+.dmg-physical { color: #8b5a2b; font-weight: 900; }   /* 棕 */
+.dmg-fire { color: #ff3b30; font-weight: 900; }       /* 亮红 */
+.dmg-ice { color: #60a5fa; font-weight: 900; }        /* 浅蓝 */
+.dmg-lightning { color: #f59e0b; font-weight: 900; }  /* 黄 */
+.dmg-poison { color: #a855f7; font-weight: 900; }     /* 紫 */
+.dmg-wind { color: #22c55e; font-weight: 900; }       /* 绿 */
+.dmg-blood { color: #7f1d1d; font-weight: 900; }      /* 深红 */
+
+/* 真伤是白色：为了在白底可见，加一点描边/阴影 */
+.dmg-true {
+  color: #ffffff;
+  font-weight: 900;
+  text-shadow: 0 0 1px rgba(0,0,0,0.75), 0 0 2px rgba(0,0,0,0.55);
+}
